@@ -31,9 +31,10 @@ If structured planning helps → consult `.agents/CAPABILITIES.md`.
 Common routes:
 
 - clarify / decide → grilling
-- large uncertainty → wayfinder
+- clarification + durable docs → offer grill-with-docs
+- large uncertainty → offer wayfinder
 - design boundary → grilling + codebase-design
-- formalize decided work → to-spec / to-tickets
+- formalize decided work → offer to-spec / to-tickets
 
 ### RECORD
 

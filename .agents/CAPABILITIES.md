@@ -14,11 +14,13 @@ Exact upstream commits and vendoring provenance live in `.agents/PROVENANCE.md`.
 
 - Prefer one primary capability.
 - Compose capabilities only when each contributes distinct work.
+- Respect each vendored skill's upstream invocation policy. A skill with `policy.allow_implicit_invocation: false` or `disable-model-invocation: true` is user-invoked: recommend or offer it when relevant, but do not start it implicitly.
 - When a capability invokes another adopted capability by name, resolve it through this catalog and read that capability before continuing.
 - If a capability requires a runtime primitive that is unavailable, do not pretend it ran successfully or silently rewrite its semantics.
 - Vendored skill contents remain unchanged; repository-specific integration belongs outside the vendored skill.
 - Tracker-backed planning capabilities use `docs/agents/issue-tracker.md`.
 - For `wayfinder` integration, research tickets use normal ChatGPT primary-source research because the upstream `research` skill is not adopted; prototype tickets are dispatched to Arena through `.agents/ARENA-DISPATCH.md` and their results feed back into the map.
+- For Arena, naming a capability under `Capabilities to load` in a dispatched Issue is explicit invocation.
 
 ## Skills
 
@@ -52,16 +54,18 @@ Use normal reasoning and repository evidence by default.
 ### DECIDE
 
 - Human intent or tradeoffs need clarification → **grilling**
-- Clarification should also produce durable domain or decision artifacts → **grill-with-docs**
-- The uncertainty exceeds a coherent single planning session → **wayfinder**
+- Clarification should also produce durable domain or decision artifacts → offer **grill-with-docs**
+- The uncertainty exceeds a coherent single planning session → offer **wayfinder**
 - A specific module interface or seam must be designed → **grilling** + **codebase-design**
-- Broader architectural friction or deepening opportunities need evaluation → **improve-codebase-architecture**
-- Decisions are settled and need formalization → **to-spec**
-- Settled work requires multiple dependent Issues → **to-tickets**
+- Broader architectural friction or deepening opportunities need evaluation → offer **improve-codebase-architecture**
+- Decisions are settled and need formalization → offer **to-spec**
+- Settled work requires multiple dependent Issues → offer **to-tickets**
 
 ### DISPATCH
 
 Select Arena capabilities only when they materially affect execution of the compiled Issue.
+
+The compiled Issue explicitly invokes every capability named under `Capabilities to load`.
 
 - General decided implementation → **implement**
 - Explicit test-first implementation → **tdd**
@@ -77,7 +81,7 @@ Arena dispatch itself is governed by `.agents/ARENA-DISPATCH.md`.
 
 - Review a proposed change → **code-review**
 - Review interface or seam quality → **code-review** + **codebase-design**
-- Evaluate broader architectural quality → **improve-codebase-architecture**
+- Broader architectural exploration would materially help → offer **improve-codebase-architecture**
 
 Use normal reasoning for additional risk or evidence checks unless a listed capability materially improves the review.
 
@@ -89,10 +93,10 @@ Use **security-audit** only when a dedicated deep audit is warranted or explicit
 
 ## Known overlaps
 
-- Prefer **grill-with-docs** over bare **grilling** when clarification should create durable domain or decision artifacts.
-- Use **wayfinder** only when normal clarification and specification cannot reasonably contain the uncertainty.
+- Offer **grill-with-docs** instead of bare **grilling** when clarification should create durable domain or decision artifacts.
+- Offer **wayfinder** only when normal clarification and specification cannot reasonably contain the uncertainty.
 - **codebase-design** supplies shared design vocabulary and reference; use it under a driver such as **grilling**, **implement**, **tdd**, **code-review**, or **improve-codebase-architecture**, not as a standalone process.
-- Use **improve-codebase-architecture** for architectural discovery or evaluation, not as the implementation driver.
+- Offer **improve-codebase-architecture** for architectural discovery or evaluation; do not use it as the implementation driver.
 - **implement** may invoke implementation capabilities such as **tdd** and **code-review**; do not duplicate them in an Issue unless the distinction materially matters.
 - Use **code-review** for the normal review pass.
 - Use **security-audit** for dedicated audit work, not ordinary security reasoning.
