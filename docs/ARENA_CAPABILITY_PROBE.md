@@ -1,6 +1,6 @@
 # Arena capability probe — this session, not a platform guarantee
 
-- **Observed:** 2026-09-25, approximately 23:36–23:48 UTC (`date -u`); GitHub write observations added after the initial report commit.
+- **Observed:** 2026-09-25, approximately 23:36–23:49 UTC (`date -u`); GitHub write observations added after the initial report commit.
 - **Repository:** `anthracite-labs/Template`, `/home/user/Template`.
 - **Actual work branch:** `arena/01a0daec-template`, initially at `f32732e46fd9e23d0540425b9865382e3a821bba`. The remote `arena-capability-probe` and `main` both pointed to that same SHA at probe start (`git ls-remote --heads origin`). Issue #2 asks for `arena-capability-probe` as PR head; this Arena session is bound to `arena/01a0daec-template`, so the PR head must differ. The starting commit is identical. Do not mistake this for a probe of a different repository revision.
 
@@ -10,7 +10,7 @@ This particular sandbox is a small Debian 12 **KVM guest** (2 visible CPUs, 3.8 
 
 Network access is selective: GitHub's website/API, npm, and PyPI worked with certificate verification; many other resolved hosts returned `curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL` before HTTP, including Maven Central, Gradle, Google Maven/SDK downloads, Rust/Go registries, and GitHub release-asset hosts. The precise network-policy cause is **not established**. A reachable registry front page is not proof an artifact can be fetched; direct Maven/Google artifact GETs failed. A pinned JDK and Gradle distribution could be identified, but **not downloaded through the tested routes**. No JVM, Gradle, Android SDK/emulator, browser, or container daemon was preinstalled. This does **not** prove these toolchains or their builds are generally impossible here. `/dev/kvm` is absent, so accelerated Android emulation is unavailable in this guest; Android dependency resolution/builds/Robolectric remain separate, unverified questions.
 
-This repository has **zero** GitHub Actions workflows, runs, and artifacts at probe time. Read-only repository/PR/Issues/Actions-list API calls worked, but `GET /repos/anthracite-labs/Template/actions/permissions` returned **403 `Resource not accessible by integration`**. It is incorrect to assume a usable canonical runner without checking. No destructive/admin/account action, workflow dispatch, merge, public tunnel, or heavyweight emulator download was performed.
+This repository has **zero** GitHub Actions workflows, runs, and artifacts at probe time. Read-only repository/PR/Issues/Actions-list API calls worked, and the required Git push (both new and existing session branch) and PR creation succeeded, but `GET /repos/anthracite-labs/Template/actions/permissions` returned **403 `Resource not accessible by integration`**. It is incorrect to assume a usable canonical runner without checking. No destructive/admin/account action, workflow dispatch, merge, public tunnel, or heavyweight emulator download was performed.
 
 **Classification vocabulary:** `confirmed` = successfully exercised; `confirmed_unavailable` = specifically tested operation or preinstalled path absent **in this session**; `installable` = missing initially but installed and exercised user-locally; `permission_restricted` = an authoritative permission/API denial; `not_tested` = no valid test of the operation; `session_specific` = a measured observation not a permanent Arena guarantee. A row can contain multiple statuses for different sub-capabilities. See the command/evidence beside each classification and the numbered details below.
 
@@ -25,7 +25,7 @@ This repository has **zero** GitHub Actions workflows, runs, and artifacts at pr
 | 5 | Network | `session_specific` — verified HTTPS 200 at `github.com`, `api.github.com`, `registry.npmjs.org`, `pypi.org`; `curl` 35 at Maven/Gradle/Google and other hosts; `confirmed` small GitHub API file download; `confirmed_unavailable` only for tested `curl -6 https://github.com/`; §5. |
 | 6 | Local servers | `confirmed` — `python3 -m http.server 18765 --bind 127.0.0.1` + later `curl http://127.0.0.1:18765/persist.txt` → 200; `not_tested` externally reachable preview/tunnel; §6. |
 | 7 | Git | `confirmed` — clone, fetch dry run, status/diff/branch, `git commit` and `git push origin arena/01a0daec-template` (remote SHA verified); `confirmed_unavailable` preinstalled Git LFS; actual submodule fetching `not_tested`; §7/§8. |
-| 8 | GitHub integration | `confirmed` file/Issue/PR/Actions-list reads, push of report and creation of PR #3 → `main`; `permission_restricted` Actions settings GET 403; other writes classified individually in §8. |
+| 8 | GitHub integration | `confirmed` file/Issue/PR/Actions-list reads, new **and existing** session-branch push, PR #3 → `main`; `permission_restricted` Actions settings GET 403; other writes classified individually in §8. |
 | 9 | Variables / secrets | `confirmed` — variable **presence only** for `GITHUB_TOKEN`/`GH_TOKEN`, no values; no configured `git credential.helper`; authenticated API access is selective; §9. |
 | 10 | Core CLIs | `confirmed` Bash, curl, wget, tar/zip/unzip/xz, jq, grep/sed/awk/find/xargs, make, gcc, OpenSSL, SSH, gh, Git; `confirmed_unavailable` on PATH for yq, cmake/ninja, clang, pkg-config, sqlite3 CLI, rsync, git-lfs; §10. |
 | 11 | Runtimes / package managers | `confirmed` Python/pip, Node/npm/npx/yarn/corepack, Perl; `installable` `pipx` and `pnpm` into `/tmp`; `confirmed_unavailable` preinstalled JVM/Go/Rust/Ruby/PHP/.NET/Swift/Lua, etc.; **their installability not inferred**; §11. |
@@ -39,11 +39,11 @@ This repository has **zero** GitHub Actions workflows, runs, and artifacts at pr
 | 19 | Process / runtime | `confirmed` child/signal, background server, loopback, inotify event; `session_specific` open files 1024 / user processes 15734 / watches 65536; long-run ceiling `not_tested`; §19. |
 | 20 | Time / locale | `session_specific` — UTC date 2026-09-25, `/etc/localtime` UTC, POSIX C-type locale; clock accuracy against independent reference `not_tested`; §20. |
 | 21 | Archives / artifacts | `confirmed` tar+zip round trips, files committed and pushed (report SHA verified remotely); Actions artifact listing `confirmed` (zero); artifact download/max large size `not_tested`; §21. |
-| 22 | Limits / unknowns | `not_tested` cross-session lifespan, emulator/software fallback, JVM build, CI execution and side-effectful GitHub mutations; `session_specific` all measured versions/resources/network results; §22. |
+| 22 | Limits / unknowns | `not_tested` cross-session lifespan, emulator/software fallback, JVM build, CI execution and unnecessary/forbidden GitHub mutations (merge/admin/workflow writes); `session_specific` all measured versions/resources/network results; §22. |
 
 ## Evidence and exact commands
 
-Commands below were run from `/home/user/Template` unless the path or note says otherwise. The disposable scratch directory was `/tmp/arena-audit-01a0daec` (`umask 077`); its contents are **not** part of the PR. The installed versions are recorded as dated evidence, not promised by the template. Errors/HTTP status matter: do not reinterpret TLS-handshake errors as missing DNS, bad credentials, or rejected certificates.
+The read-first files `.agents/ARENA-DISPATCH.md`, `.agents/CAPABILITIES.md`, `docs/PROJECT_STATE.md` and the invoked `prototype` skill were inspected before probing. This is an environment experiment, not a product UI/state-design prototype; its throwaway code lives only in scratch and the answer is this report. Commands below were run from `/home/user/Template` unless the path or note says otherwise. The disposable scratch directory was `/tmp/arena-audit-01a0daec` (`umask 077`); its contents are **not** part of the PR. The installed versions are recorded as dated evidence, not promised by the template. Errors/HTTP status matter: do not reinterpret TLS-handshake errors as missing DNS, bad credentials, or rejected certificates.
 
 ### 1. Host / OS / identity
 
@@ -163,26 +163,28 @@ gh api repos/anthracite-labs/Template/actions/workflows --jq '{total_count}'
 gh api repos/anthracite-labs/Template/actions/runs --jq '{total_count}'
 gh api repos/anthracite-labs/Template/actions/artifacts --jq '{total_count}'
 gh api repos/anthracite-labs/Template/actions/permissions
+gh api -i repos/anthracite-labs/Template/actions/permissions 2>&1 | grep -Ei 'HTTP/|x-accepted-github-permissions|Resource not accessible'
+gh api repos/anthracite-labs/Template/installation --jq '{permissions,repository_selection,app_slug}'
 gh api user --jq '{login,type}'
 ```
 
-`confirmed`: repository file/Issue/label/merged PR metadata were readable (issue 2 open, label `ready-for-agent`); existing PR #1 reviews/comments endpoints returned `[]`; main commit check-runs returned count 0; workflow/run/artifact list endpoints each returned count **0**. Empty lists prove the endpoint was reachable, **not** that populated reviews, logs or artifacts can be retrieved. `permission_restricted`: `gh api .../actions/permissions` → HTTP **403** with `{"message":"Resource not accessible by integration"}`; `gh api user` returned the same 403 for the authenticated-user endpoint. Repository JSON returned `permissions: {admin:false,maintain:false,pull:false,push:false,triage:false}`; for this app/integration context, those user-oriented fields **did not predict actual write capability**: the required Git push and PR creation both succeeded. Use the real permission response or a necessary authorized write, not these flags alone.
+`confirmed`: repository file/Issue/label/merged PR metadata were readable (issue 2 open, label `ready-for-agent`); existing PR #1 reviews/comments endpoints returned `[]`; main commit check-runs returned count 0; workflow/run/artifact list endpoints each returned count **0**. Empty lists prove the endpoint was reachable, **not** that populated reviews, logs or artifacts can be retrieved. `permission_restricted`: `gh api .../actions/permissions` → HTTP **403** with `{"message":"Resource not accessible by integration"}` and header `X-Accepted-Github-Permissions: administration=read`; `gh api user` returned the same 403 for the authenticated-user endpoint. A separate read-only `GET /repos/anthracite-labs/Template/installation` failed **401** `A JSON web token could not be decoded` (that endpoint expects an App JWT, not this session's installation-style token); no installation permissions could be enumerated via that route. This is not evidence of a broken GitHub connection: repository reads, push and PR creation worked. Repository JSON returned `permissions: {admin:false,maintain:false,pull:false,push:false,triage:false}`; for this app/integration context, those user-oriented fields **did not predict actual write capability**: the required Git push and PR creation both succeeded. Use the real permission response or a necessary authorized write, not these flags alone.
 
-| Requested GitHub ability | Classification at initial probe | Specific evidence / safety boundary |
+| Requested GitHub ability | Classification after authorized deliverable writes | Specific evidence / safety boundary |
 |---|---|---|
 | Read repository files / Issues / labels | `confirmed` | `gh api .../contents/docs/PROJECT_STATE.md` → 200/path/size; issue #2 and labels readable. |
 | Read PR reviews / PR comments / checks | `confirmed` for GET endpoints | PR #1 reviews `[]`, comments `[]`, main check-runs count 0. No populated review or check payload exists to inspect. |
 | Read Actions run metadata / artifact metadata | `confirmed` for list endpoints | `gh api .../actions/runs`, `.../artifacts` → 200 / `total_count:0`. |
 | Read workflow job logs / download artifacts | `not_tested` | Zero runs/jobs/artifacts; no valid ID to fetch; permissions for these specific downloads unverified. |
 | Commit locally / push ordinary files / create the allowed remote **session** branch | `confirmed` | `git commit` → `1682a39c425e38f7487861d78e16380d2973ac12`; `git push origin arena/01a0daec-template` → `[new branch]`; `git ls-remote` verified the same SHA. |
-| Push an **existing** branch | `not_tested` at the time of the first push | The first push created the branch. Record a subsequent actual update (not `--dry-run`) here if it succeeds. |
+| Push an **existing** branch | `confirmed` | Second report commit `ded45ee790b83362ac44924e59e8f4bd6254f35a`: `GIT_TERMINAL_PROMPT=0 git push origin arena/01a0daec-template` → `1682a39..ded45ee`; `git ls-remote` and later PR GET confirmed the updated SHA. Only the allowed session branch was used. |
 | Open PR targeting `main` | `confirmed` | `gh pr create --repo anthracite-labs/Template --base main --head arena/01a0daec-template ...` → [PR #3](https://github.com/anthracite-labs/Template/pull/3); `gh api .../pulls/3` → state `open`, `merged:false`, correct head/base. |
 | Create a new *other* branch | `not_tested` | Only the permitted session branch was created; this session may not create another branch merely to probe. |
 | Comment on a PR or Issue / write Issues or labels | `not_tested` | Would create visible content or change repository state merely to probe; read-only list is not proof of write. A completion report in the PR body does not test commenting. |
 | Dispatch workflow / rerun / cancel workflow | `not_tested` | No workflows or runs; dispatch/rerun/cancel would have side effects. |
 | Write Actions workflow file | `not_tested` | Out of scope of this documentation-only change; no workflow-file write test. |
 | Merge PR | `not_tested` | Explicitly forbidden; no merge attempted. |
-| Modify repository/Actions settings | `permission_restricted` for **reading Actions settings**; writes `not_tested` | Actions settings GET 403 `Resource not accessible by integration`. No admin write attempted; does not establish every repository setting's permission individually. |
+| Modify repository/Actions settings | `permission_restricted` for **reading Actions settings**; writes `not_tested` | Actions settings GET 403 `Resource not accessible by integration`, required permission header `administration=read`. No admin write attempted; does not establish every repository setting's permission individually. |
 
 **Post-write evidence (2026-09-25 ~23:46–23:47 UTC):**
 
@@ -196,7 +198,17 @@ gh pr create --repo anthracite-labs/Template --base main --head arena/01a0daec-t
 gh api repos/anthracite-labs/Template/pulls/3 --jq '{number,state,merged,head:.head.ref,head_sha:.head.sha,base:.base.ref,html_url}'
 ```
 
-`confirmed`: local commit `1682a39c425e38f7487861d78e16380d2973ac12` contained the new report and dispatch changes; actual push exit 0 created remote `arena/01a0daec-template`; `ls-remote` matched that SHA; `gh pr create` exit 0 returned `https://github.com/anthracite-labs/Template/pull/3`; PR GET reports `state:open`, `merged:false`, head `arena/01a0daec-template`, base `main`. Remote `arena-capability-probe` and `main` remained at starting SHA `f32732e46fd9e23d0540425b9865382e3a821bba`. `gh pr view 3 --json statusCheckRollup` returned zero checks. This is the actual safe write test on the necessary deliverables, not a gratuitous Issue/admin mutation. A following update will confirm whether pushing *again* to the now-existing branch succeeds. The PR body carries the final report-bearing SHA and completion findings.
+`confirmed`: local commit `1682a39c425e38f7487861d78e16380d2973ac12` contained the new report and dispatch changes; actual push exit 0 created remote `arena/01a0daec-template`; `ls-remote` matched that SHA; `gh pr create` exit 0 returned `https://github.com/anthracite-labs/Template/pull/3`; PR GET reports `state:open`, `merged:false`, head `arena/01a0daec-template`, base `main`. Remote `arena-capability-probe` and `main` remained at starting SHA `f32732e46fd9e23d0540425b9865382e3a821bba`. `gh pr view 3 --json statusCheckRollup` returned zero checks. This is the actual safe write test on the necessary deliverables, not a gratuitous Issue/admin mutation. After PR creation, the report was updated and pushed again:
+
+```bash
+git add -- docs/ARENA_CAPABILITY_PROBE.md
+git diff --cached --check
+git commit -m 'Record actual GitHub write permissions in capability report'
+GIT_TERMINAL_PROMPT=0 git push origin arena/01a0daec-template
+git ls-remote --heads origin arena/01a0daec-template
+```
+
+`confirmed`: second commit `ded45ee790b83362ac44924e59e8f4bd6254f35a` updated the report; push to the **existing** remote session branch exited 0 with `1682a39..ded45ee`; `git ls-remote` returned the new SHA. A subsequent PR GET showed `commits:2`, `head_sha:ded45ee...`, `state:open`, `merged:false`; the immediately preceding GET briefly showed the prior head SHA, so remote-ref verification was used rather than trusting an instantaneous PR metadata read. The PR body carries the final report-bearing SHA and completion findings.
 
 ### 9. Variables / secrets boundary
 
@@ -334,7 +346,7 @@ gh api repos/anthracite-labs/Template/actions/artifacts --jq '{total_count}'
 
 ## Confirmed / limited / installable / unverified at a glance
 
-- **`confirmed`:** local Git clone/fetch/status/diff/commit and push of report, new remote session branch and PR #3 creation, native compilation/execution, Python/Node/Perl, small verified GitHub API download, npm/PyPI package downloads, loopback HTTP, file and background process persistence within this session, archives, SQLite via Python, signals and inotify, selected read-only GitHub APIs.
+- **`confirmed`:** local Git clone/fetch/status/diff/commit, push of the new **and existing** remote session branch, PR #3 creation, native compilation/execution, Python/Node/Perl, small verified GitHub API download, npm/PyPI package downloads, loopback HTTP, file and background process persistence within this session, archives, SQLite via Python, signals and inotify, selected read-only GitHub APIs.
 - **`installable`:** previously missing `pipx`, `pnpm`, Playwright-core **library**, and a native esbuild binary, installed in user scratch without sudo; not a claim all packages or browsers are installable.
 - **`confirmed_unavailable` in the narrowly tested form:** preinstalled JVM/Gradle/Android SDK/browser/container CLI and listed other missing PATH tools; `/dev/kvm` and KVM-backed Android acceleration; curl forced IPv6 to GitHub in this test. None means every alternative installation route is impossible.
 - **`permission_restricted`:** GitHub Actions settings read (`403 Resource not accessible by integration`), authenticated-user API read (`403`). Other GitHub writes require separate evidence, not extrapolation from these endpoints.
