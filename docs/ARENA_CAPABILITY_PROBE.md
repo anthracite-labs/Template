@@ -1,6 +1,6 @@
 # Arena capability probe — this session, not a platform guarantee
 
-- **Observed:** 2026-09-25, approximately 23:36–23:43 UTC (`date -u`).
+- **Observed:** 2026-09-25, approximately 23:36–23:48 UTC (`date -u`); GitHub write observations added after the initial report commit.
 - **Repository:** `anthracite-labs/Template`, `/home/user/Template`.
 - **Actual work branch:** `arena/01a0daec-template`, initially at `f32732e46fd9e23d0540425b9865382e3a821bba`. The remote `arena-capability-probe` and `main` both pointed to that same SHA at probe start (`git ls-remote --heads origin`). Issue #2 asks for `arena-capability-probe` as PR head; this Arena session is bound to `arena/01a0daec-template`, so the PR head must differ. The starting commit is identical. Do not mistake this for a probe of a different repository revision.
 
@@ -24,8 +24,8 @@ This repository has **zero** GitHub Actions workflows, runs, and artifacts at pr
 | 4 | Privilege / installability | `confirmed` — `id -u`=1001, `sudo -n true`=0; `installable` user-local packages in §11. Apt's attempted *scratch* metadata refresh failed TLS; privileged system update/install `not_tested`; §4. |
 | 5 | Network | `session_specific` — verified HTTPS 200 at `github.com`, `api.github.com`, `registry.npmjs.org`, `pypi.org`; `curl` 35 at Maven/Gradle/Google and other hosts; `confirmed` small GitHub API file download; `confirmed_unavailable` only for tested `curl -6 https://github.com/`; §5. |
 | 6 | Local servers | `confirmed` — `python3 -m http.server 18765 --bind 127.0.0.1` + later `curl http://127.0.0.1:18765/persist.txt` → 200; `not_tested` externally reachable preview/tunnel; §6. |
-| 7 | Git | `confirmed` — `git clone --depth 1`, `git fetch --dry-run`, `status`, `diff`, `branch`, remote ref reads; commit/push observations in §7/§8. `confirmed_unavailable` preinstalled Git LFS; actual submodule fetching `not_tested`; §7. |
-| 8 | GitHub integration | `confirmed` public file/Issue/PR/Actions-list reads; `permission_restricted` Actions settings GET 403; actual write tests and deliberately untested operations tabulated in §8. |
+| 7 | Git | `confirmed` — clone, fetch dry run, status/diff/branch, `git commit` and `git push origin arena/01a0daec-template` (remote SHA verified); `confirmed_unavailable` preinstalled Git LFS; actual submodule fetching `not_tested`; §7/§8. |
+| 8 | GitHub integration | `confirmed` file/Issue/PR/Actions-list reads, push of report and creation of PR #3 → `main`; `permission_restricted` Actions settings GET 403; other writes classified individually in §8. |
 | 9 | Variables / secrets | `confirmed` — variable **presence only** for `GITHUB_TOKEN`/`GH_TOKEN`, no values; no configured `git credential.helper`; authenticated API access is selective; §9. |
 | 10 | Core CLIs | `confirmed` Bash, curl, wget, tar/zip/unzip/xz, jq, grep/sed/awk/find/xargs, make, gcc, OpenSSL, SSH, gh, Git; `confirmed_unavailable` on PATH for yq, cmake/ninja, clang, pkg-config, sqlite3 CLI, rsync, git-lfs; §10. |
 | 11 | Runtimes / package managers | `confirmed` Python/pip, Node/npm/npx/yarn/corepack, Perl; `installable` `pipx` and `pnpm` into `/tmp`; `confirmed_unavailable` preinstalled JVM/Go/Rust/Ruby/PHP/.NET/Swift/Lua, etc.; **their installability not inferred**; §11. |
@@ -38,7 +38,7 @@ This repository has **zero** GitHub Actions workflows, runs, and artifacts at pr
 | 18 | Databases / services | `confirmed` Python SQLite in-memory query; `confirmed_unavailable` preinstalled SQLite CLI and checked PostgreSQL/MySQL/Redis clients/servers; service startup `not_tested`; §18. |
 | 19 | Process / runtime | `confirmed` child/signal, background server, loopback, inotify event; `session_specific` open files 1024 / user processes 15734 / watches 65536; long-run ceiling `not_tested`; §19. |
 | 20 | Time / locale | `session_specific` — UTC date 2026-09-25, `/etc/localtime` UTC, POSIX C-type locale; clock accuracy against independent reference `not_tested`; §20. |
-| 21 | Archives / artifacts | `confirmed` tar+zip round trips and small file production; GitHub Actions artifact listing `confirmed` (zero); artifact download/max large size `not_tested`; §21. |
+| 21 | Archives / artifacts | `confirmed` tar+zip round trips, files committed and pushed (report SHA verified remotely); Actions artifact listing `confirmed` (zero); artifact download/max large size `not_tested`; §21. |
 | 22 | Limits / unknowns | `not_tested` cross-session lifespan, emulator/software fallback, JVM build, CI execution and side-effectful GitHub mutations; `session_specific` all measured versions/resources/network results; §22. |
 
 ## Evidence and exact commands
@@ -145,7 +145,7 @@ git lfs version; git submodule status
 GIT_TERMINAL_PROMPT=0 git push --dry-run origin HEAD:refs/heads/arena/01a0daec-template
 ```
 
-`confirmed`: Git 2.39.5; clean initial worktree; shallow clone and fetch dry run exit 0; clone HEAD `f32732e`; HTTPS `origin` points at `https://github.com/anthracite-labs/Template.git`; local `main`, `origin/main`, `arena/01a0daec-template` and remote `arena-capability-probe` initially shared the same SHA. `git submodule status` exited successfully but this checkout has no submodules to actually fetch. `git lfs version` returned `git: 'lfs' is not a git command`. Push dry-run printed `[new branch] HEAD -> arena/01a0daec-template` and exited 0 **without writing a remote ref** (`ls-remote` still showed only `arena-capability-probe` and `main`). Do not count a dry-run as permission to push. Actual commit/push evidence, once performed for the report, belongs in the post-write note in §8.
+`confirmed`: Git 2.39.5; clean initial worktree; shallow clone and fetch dry run exit 0; clone HEAD `f32732e`; HTTPS `origin` points at `https://github.com/anthracite-labs/Template.git`; local `main`, `origin/main`, `arena/01a0daec-template` and remote `arena-capability-probe` initially shared the same SHA. `git submodule status` exited successfully but this checkout has no submodules to actually fetch. `git lfs version` returned `git: 'lfs' is not a git command`. Push dry-run printed `[new branch] HEAD -> arena/01a0daec-template` and exited 0 **without writing a remote ref** (`ls-remote` still showed only `arena-capability-probe` and `main`). The subsequent **actual** report commit/push created the session branch; see §8. A dry run alone is never proof of write permission.
 
 ### 8. GitHub integration / permission surface
 
@@ -166,7 +166,7 @@ gh api repos/anthracite-labs/Template/actions/permissions
 gh api user --jq '{login,type}'
 ```
 
-`confirmed`: repository file/Issue/label/merged PR metadata were readable (issue 2 open, label `ready-for-agent`); existing PR #1 reviews/comments endpoints returned `[]`; main commit check-runs returned count 0; workflow/run/artifact list endpoints each returned count **0**. Empty lists prove the endpoint was reachable, **not** that populated reviews, logs or artifacts can be retrieved. `permission_restricted`: `gh api .../actions/permissions` → HTTP **403** with `{"message":"Resource not accessible by integration"}`; `gh api user` returned the same 403 for the authenticated-user endpoint. Repository JSON returned `permissions: {admin:false,maintain:false,pull:false,push:false,triage:false}`; for this app/integration context, do **not** infer Git push or PR write denial solely from those user-oriented fields. Test the necessary deliverable write separately.
+`confirmed`: repository file/Issue/label/merged PR metadata were readable (issue 2 open, label `ready-for-agent`); existing PR #1 reviews/comments endpoints returned `[]`; main commit check-runs returned count 0; workflow/run/artifact list endpoints each returned count **0**. Empty lists prove the endpoint was reachable, **not** that populated reviews, logs or artifacts can be retrieved. `permission_restricted`: `gh api .../actions/permissions` → HTTP **403** with `{"message":"Resource not accessible by integration"}`; `gh api user` returned the same 403 for the authenticated-user endpoint. Repository JSON returned `permissions: {admin:false,maintain:false,pull:false,push:false,triage:false}`; for this app/integration context, those user-oriented fields **did not predict actual write capability**: the required Git push and PR creation both succeeded. Use the real permission response or a necessary authorized write, not these flags alone.
 
 | Requested GitHub ability | Classification at initial probe | Specific evidence / safety boundary |
 |---|---|---|
@@ -174,15 +174,29 @@ gh api user --jq '{login,type}'
 | Read PR reviews / PR comments / checks | `confirmed` for GET endpoints | PR #1 reviews `[]`, comments `[]`, main check-runs count 0. No populated review or check payload exists to inspect. |
 | Read Actions run metadata / artifact metadata | `confirmed` for list endpoints | `gh api .../actions/runs`, `.../artifacts` → 200 / `total_count:0`. |
 | Read workflow job logs / download artifacts | `not_tested` | Zero runs/jobs/artifacts; no valid ID to fetch; permissions for these specific downloads unverified. |
-| Commit locally / push ordinary files / push existing session branch / open PR | `not_tested` in initial read-only phase | Dry-run is not a write. Required report/PR actions should be recorded below when actually attempted. |
-| Create a new *other* branch | `not_tested` | Would be an externally visible test and this session is fixed to one branch; no such mutation. |
+| Commit locally / push ordinary files / create the allowed remote **session** branch | `confirmed` | `git commit` → `1682a39c425e38f7487861d78e16380d2973ac12`; `git push origin arena/01a0daec-template` → `[new branch]`; `git ls-remote` verified the same SHA. |
+| Push an **existing** branch | `not_tested` at the time of the first push | The first push created the branch. Record a subsequent actual update (not `--dry-run`) here if it succeeds. |
+| Open PR targeting `main` | `confirmed` | `gh pr create --repo anthracite-labs/Template --base main --head arena/01a0daec-template ...` → [PR #3](https://github.com/anthracite-labs/Template/pull/3); `gh api .../pulls/3` → state `open`, `merged:false`, correct head/base. |
+| Create a new *other* branch | `not_tested` | Only the permitted session branch was created; this session may not create another branch merely to probe. |
 | Comment on a PR or Issue / write Issues or labels | `not_tested` | Would create visible content or change repository state merely to probe; read-only list is not proof of write. A completion report in the PR body does not test commenting. |
 | Dispatch workflow / rerun / cancel workflow | `not_tested` | No workflows or runs; dispatch/rerun/cancel would have side effects. |
 | Write Actions workflow file | `not_tested` | Out of scope of this documentation-only change; no workflow-file write test. |
 | Merge PR | `not_tested` | Explicitly forbidden; no merge attempted. |
 | Modify repository/Actions settings | `permission_restricted` for **reading Actions settings**; writes `not_tested` | Actions settings GET 403 `Resource not accessible by integration`. No admin write attempted; does not establish every repository setting's permission individually. |
 
-**Post-write evidence:** to be updated after the required report commit, push, and PR request; a dry run and user-oriented `.permissions` flags are insufficient to classify write access. The PR body contains the final report-bearing SHA and completion findings if creation succeeds.
+**Post-write evidence (2026-09-25 ~23:46–23:47 UTC):**
+
+```bash
+git add -- docs/ARENA_CAPABILITY_PROBE.md .agents/ARENA-DISPATCH.md
+git diff --cached --check
+git commit -m 'Document live Arena capability audit and update dispatch routing'
+GIT_TERMINAL_PROMPT=0 git push origin arena/01a0daec-template
+git ls-remote --heads origin arena/01a0daec-template arena-capability-probe main
+gh pr create --repo anthracite-labs/Template --base main --head arena/01a0daec-template --title 'Audit live Arena sandbox capabilities (Issue #2)' --body-file /tmp/arena-audit-01a0daec/pr-body.md
+gh api repos/anthracite-labs/Template/pulls/3 --jq '{number,state,merged,head:.head.ref,head_sha:.head.sha,base:.base.ref,html_url}'
+```
+
+`confirmed`: local commit `1682a39c425e38f7487861d78e16380d2973ac12` contained the new report and dispatch changes; actual push exit 0 created remote `arena/01a0daec-template`; `ls-remote` matched that SHA; `gh pr create` exit 0 returned `https://github.com/anthracite-labs/Template/pull/3`; PR GET reports `state:open`, `merged:false`, head `arena/01a0daec-template`, base `main`. Remote `arena-capability-probe` and `main` remained at starting SHA `f32732e46fd9e23d0540425b9865382e3a821bba`. `gh pr view 3 --json statusCheckRollup` returned zero checks. This is the actual safe write test on the necessary deliverables, not a gratuitous Issue/admin mutation. A following update will confirm whether pushing *again* to the now-existing branch succeeds. The PR body carries the final report-bearing SHA and completion findings.
 
 ### 9. Variables / secrets boundary
 
@@ -190,7 +204,7 @@ gh api user --jq '{login,type}'
 for name in JAVA_HOME ANDROID_HOME ANDROID_SDK_ROOT GRADLE_USER_HOME CI ARENA_SESSION_ID GITHUB_ACTIONS GITHUB_TOKEN GH_TOKEN GIT_ASKPASS SSH_AUTH_SOCK HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY; do
   if [ "${!name+x}" ]; then printf '%s: set (redacted)\n' "$name"; else printf '%s: unset\n' "$name"; fi
 done
-git config --get credential.helper >/dev/null; echo "helper-present-exit=$?"
+test -n "$(git config --get credential.helper 2>/dev/null)" && echo yes || echo no
 ```
 
 `confirmed`: variables exist (`env | wc -l`=16); `GITHUB_TOKEN` and `GH_TOKEN` are **set; their values were never printed or recorded**. The checked CI/Arena-session, Java/Android, proxy, SSH agent and Git askpass variables were unset. No configured `git credential.helper` was found (this does not mean no other authentication integration exists); `gh api` can access selected endpoints. No credential file contents, complete environment dump, tokens or private keys were read. Presence/absence is `session_specific`.
@@ -316,11 +330,11 @@ cmp /tmp/arena-audit-01a0daec/persist.txt /tmp/arena-audit-01a0daec/zip-out/pers
 gh api repos/anthracite-labs/Template/actions/artifacts --jq '{total_count}'
 ```
 
-`confirmed`: tar.gz (147 bytes) and zip (202 bytes) were created, extracted, and content-checked; bounded 4 MiB disposable write (§2); files can be staged for a Git commit. Actions artifacts list count 0, so **download through Arena's GitHub integration is not tested**. Maximum large artifact/file size is unmeasured. Other deliberate unknowns: cross-session storage and process survival, public preview reachability, JDK/Gradle/Android builds, browser execution and screenshots, actual CI runner access, populated workflow logs/artifacts, comments/labels/workflow writes, merges and settings mutation. These unknowns must not be promoted to confirmed failures or successes.
+`confirmed`: tar.gz (147 bytes) and zip (202 bytes) were created, extracted, and content-checked; bounded 4 MiB disposable write (§2); this report was committed and pushed, with the remote SHA verified (§8). Actions artifacts list count 0, so **download through Arena's GitHub integration is not tested**. Maximum large artifact/file size is unmeasured. Other deliberate unknowns: cross-session storage and process survival, public preview reachability, JDK/Gradle/Android builds, browser execution and screenshots, actual CI runner access, populated workflow logs/artifacts, comments/labels/workflow writes, merges and settings mutation. These unknowns must not be promoted to confirmed failures or successes.
 
 ## Confirmed / limited / installable / unverified at a glance
 
-- **`confirmed`:** local Git clone/fetch/status/diff, native compilation/execution, Python/Node/Perl, small verified GitHub API download, npm/PyPI package downloads, loopback HTTP, file and background process persistence within this session, archives, SQLite via Python, signals and inotify, read-only selected GitHub APIs.
+- **`confirmed`:** local Git clone/fetch/status/diff/commit and push of report, new remote session branch and PR #3 creation, native compilation/execution, Python/Node/Perl, small verified GitHub API download, npm/PyPI package downloads, loopback HTTP, file and background process persistence within this session, archives, SQLite via Python, signals and inotify, selected read-only GitHub APIs.
 - **`installable`:** previously missing `pipx`, `pnpm`, Playwright-core **library**, and a native esbuild binary, installed in user scratch without sudo; not a claim all packages or browsers are installable.
 - **`confirmed_unavailable` in the narrowly tested form:** preinstalled JVM/Gradle/Android SDK/browser/container CLI and listed other missing PATH tools; `/dev/kvm` and KVM-backed Android acceleration; curl forced IPv6 to GitHub in this test. None means every alternative installation route is impossible.
 - **`permission_restricted`:** GitHub Actions settings read (`403 Resource not accessible by integration`), authenticated-user API read (`403`). Other GitHub writes require separate evidence, not extrapolation from these endpoints.
