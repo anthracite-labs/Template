@@ -3,6 +3,7 @@
 - **Observed:** initial probe 2026-09-25, approximately 23:36–23:49 UTC; alternate-route follow-up and expanded acquisition/dependency checks 2026-09-26 (UTC). Results are observations, not platform guarantees.
 - **Repository:** `anthracite-labs/Template`, `/home/user/Template`.
 - **Actual work branch:** `arena/01a0daec-template`, initially at `f32732e46fd9e23d0540425b9865382e3a821bba`. The remote `arena-capability-probe` and `main` both pointed to that same SHA at probe start (`git ls-remote --heads origin`). Issue #2 asks for `arena-capability-probe` as PR head; this Arena session is bound to `arena/01a0daec-template`, so the PR head must differ. The starting commit is identical. Do not mistake this for a probe of a different repository revision.
+- **Final substantive report-bearing SHA:** `c18304627bf6128d6aeb55685f7a059c37313d08` (the 22-area report, expanded §G evidence and dispatch correction). A subsequent *provenance-only* commit records this SHA in the report; the exact resulting PR-head SHA is in PR #3. A Git commit cannot include its own SHA in its committed file contents; use `git rev-parse HEAD` on the PR head to check the tip independently.
 
 ## Executive summary
 
