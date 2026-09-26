@@ -1,6 +1,6 @@
 # Arena capability probe — this session, not a platform guarantee
 
-- **Observed:** 2026-09-25, approximately 23:36–23:49 UTC (`date -u`); GitHub write observations added after the initial report commit.
+- **Observed:** initial probe 2026-09-25, approximately 23:36–23:49 UTC; alternate-route follow-up 2026-09-26 (UTC). Results are observations, not platform guarantees.
 - **Repository:** `anthracite-labs/Template`, `/home/user/Template`.
 - **Actual work branch:** `arena/01a0daec-template`, initially at `f32732e46fd9e23d0540425b9865382e3a821bba`. The remote `arena-capability-probe` and `main` both pointed to that same SHA at probe start (`git ls-remote --heads origin`). Issue #2 asks for `arena-capability-probe` as PR head; this Arena session is bound to `arena/01a0daec-template`, so the PR head must differ. The starting commit is identical. Do not mistake this for a probe of a different repository revision.
 
@@ -8,7 +8,7 @@
 
 This particular sandbox is a small Debian 12 **KVM guest** (2 visible CPUs, 3.8 GiB RAM, about 20 GiB free on an ext4 filesystem). It runs native C/C++, Python, Node.js, Perl, Git, and a loopback HTTP server. User-local Python/npm installations work: `pipx` and `pnpm` were **absent before the test but installed and run in `/tmp`**; an npm-downloaded ELF executable ran. File and background-process persistence was observed **between tool calls in this session**, not across Arena sessions.
 
-Network access is selective: GitHub's website/API, npm, and PyPI worked with certificate verification; many other resolved hosts returned `curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL` before HTTP, including Maven Central, Gradle, Google Maven/SDK downloads, Rust/Go registries, and GitHub release-asset hosts. The precise network-policy cause is **not established**. A reachable registry front page is not proof an artifact can be fetched; direct Maven/Google artifact GETs failed. A pinned JDK and Gradle distribution could be identified, but **not downloaded through the tested routes**. No JVM, Gradle, Android SDK/emulator, browser, or container daemon was preinstalled. This does **not** prove these toolchains or their builds are generally impossible here. `/dev/kvm` is absent, so accelerated Android emulation is unavailable in this guest; Android dependency resolution/builds/Robolectric remain separate, unverified questions.
+Network access is selective: GitHub's website/API, npm, and PyPI worked with certificate verification; many other resolved hosts returned `curl: (35) OpenSSL SSL_connect: SSL_ERROR_SYSCALL` before HTTP, including Maven Central, Gradle, Google Maven/SDK downloads, and GitHub release-asset hosts. This establishes **route-specific failures**, not toolchain unavailability or a proven network-policy cause. In the follow-up (§F), a checksum-verified, pinned PyPI wheel installed a **Temurin 21 Java runtime** and ran `Hello.class` from scratch; it is a trimmed runtime with **no `javac` or `jdk.compiler`**, so Java source compilation is still unverified. Pinned *full* JDK and Gradle release archives remained inaccessible via the tested GitHub CLI/REST, signed apt, and reputable mirror routes. No JVM, Gradle, Android SDK/emulator, browser, or container daemon was **preinstalled at initial inventory**. This does **not** prove full JDK, Gradle, or Android toolchains/builds are inherently impossible here. `/dev/kvm` is absent, so accelerated Android emulation is unavailable in this guest; dependency resolution/builds/Robolectric remain separate, unverified questions.
 
 This repository has **zero** GitHub Actions workflows, runs, and artifacts at probe time. Read-only repository/PR/Issues/Actions-list API calls worked, and the required Git push (both new and existing session branch) and PR creation succeeded, but `GET /repos/anthracite-labs/Template/actions/permissions` returned **403 `Resource not accessible by integration`**. It is incorrect to assume a usable canonical runner without checking. No destructive/admin/account action, workflow dispatch, merge, public tunnel, or heavyweight emulator download was performed.
 
@@ -21,17 +21,17 @@ This repository has **zero** GitHub Actions workflows, runs, and artifacts at pr
 | 1 | Host / OS / identity | `confirmed` — `uname -a; cat /etc/os-release; id; systemd-detect-virt` → Debian 12, x86_64, uid 1001, `kvm` guest; §1. |
 | 2 | CPU / memory / disk / filesystem | `session_specific` — `nproc; free -h; df -h /tmp; df -i /tmp; findmnt -T /tmp` → 2 CPUs, 3.8 GiB, 20 GiB free, ext4; `confirmed` ≥4 MiB writable by `dd`/read/delete; §2. |
 | 3 | Session lifecycle | `confirmed` within session — marker written then read in another call; `start_process` server answered in a later call. `not_tested` across sessions; §3. |
-| 4 | Privilege / installability | `confirmed` — `id -u`=1001, `sudo -n true`=0; `installable` user-local packages in §11. Apt's attempted *scratch* metadata refresh failed TLS; privileged system update/install `not_tested`; §4. |
-| 5 | Network | `session_specific` — verified HTTPS 200 at `github.com`, `api.github.com`, `registry.npmjs.org`, `pypi.org`; `curl` 35 at Maven/Gradle/Google and other hosts; `confirmed` small GitHub API file download; `confirmed_unavailable` only for tested `curl -6 https://github.com/`; §5. |
+| 4 | Privilege / installability | `confirmed` — `id -u`=1001, `sudo -n true`=0; `installable` user-local packages and Temurin runtime via verified PyPI wheel. Unprivileged, signed apt metadata failed on default HTTP (`Connection failed`) and HTTPS (`TLS handshake`); no OS install; §4/§F. |
+| 5 | Network | `session_specific` — verified GitHub/npm/PyPI HTTPS and an actual PyPI wheel GET, route-specific `curl` 35 at Maven/Gradle/Google; GitHub REST/CLI asset redirects to a CDN failed even when authenticated. `confirmed` small GitHub API file download; tested forced IPv6 to GitHub failed; §5/§F. |
 | 6 | Local servers | `confirmed` — `python3 -m http.server 18765 --bind 127.0.0.1` + later `curl http://127.0.0.1:18765/persist.txt` → 200; `not_tested` externally reachable preview/tunnel; §6. |
 | 7 | Git | `confirmed` — clone, fetch dry run, status/diff/branch, `git commit` and `git push origin arena/01a0daec-template` (remote SHA verified); `confirmed_unavailable` preinstalled Git LFS; actual submodule fetching `not_tested`; §7/§8. |
 | 8 | GitHub integration | `confirmed` file/Issue/PR/Actions-list reads, new **and existing** session-branch push, PR #3 → `main`; `permission_restricted` Actions settings GET 403; other writes classified individually in §8. |
 | 9 | Variables / secrets | `confirmed` — variable **presence only** for `GITHUB_TOKEN`/`GH_TOKEN`, no values; no configured `git credential.helper`; authenticated API access is selective; §9. |
 | 10 | Core CLIs | `confirmed` Bash, curl, wget, tar/zip/unzip/xz, jq, grep/sed/awk/find/xargs, make, gcc, OpenSSL, SSH, gh, Git; `confirmed_unavailable` on PATH for yq, cmake/ninja, clang, pkg-config, sqlite3 CLI, rsync, git-lfs; §10. |
-| 11 | Runtimes / package managers | `confirmed` Python/pip, Node/npm/npx/yarn/corepack, Perl; `installable` `pipx` and `pnpm` into `/tmp`; `confirmed_unavailable` preinstalled JVM/Go/Rust/Ruby/PHP/.NET/Swift/Lua, etc.; **their installability not inferred**; §11. |
-| 12 | Java / JDK | `confirmed_unavailable` preinstalled `java`, `javac`, `JAVA_HOME`; `session_specific` pinned Temurin archive GET redirected then TLS error 35; user-local JDK execution/Java compilation `not_tested`; §12. |
-| 13 | Gradle / Maven | `confirmed_unavailable` preinstalled CLIs; `session_specific` distribution/Maven Central/Google Maven/Plugin Portal fetch failure; `confirmed` home cache *path* writable; Gradle execution/resolution/cache use `not_tested`; §13. |
-| 14 | Android | `confirmed_unavailable` preinstalled SDK/adb/sdkmanager/emulator and `/dev/kvm` hardware acceleration; `session_specific` SDK URL TLS failure; compilation, unit/Robolectric tests, adb connection, emulator run `not_tested`; §14. |
+| 11 | Runtimes / package managers | `confirmed` preinstalled Python/pip, Node/npm/npx/yarn/corepack, Perl; `installable` `pipx`, `pnpm`, and **Java runtime** into `/tmp`; `confirmed_unavailable` *at initial PATH inventory* JVM/Go/Rust/Ruby/PHP/.NET/Swift/Lua, etc.; other runtimes' installability unverified; §11/§F. |
+| 12 | Java / JDK | `confirmed_unavailable` **preinstalled** `java`/`javac`; `installable` pinned Temurin 21 **runtime** via SHA-256-checked PyPI wheel: `java -version` and scratch `Hello.class` ran. That image has no `javac`/`jdk.compiler` (`java Hello.java` fails); full JDK download/Java compilation not proven; §12/§F. |
+| 13 | Gradle / Maven | `confirmed_unavailable` preinstalled CLIs; `session_specific` pinned Gradle GitHub release CLI/REST → CDN EOF, official/alternate distribution and dependency hosts' TLS failures; npm candidates are wrappers, not Gradle. Cache *path* writable; Gradle execution/real dependency resolution `not_tested`; §13/§F. |
+| 14 | Android | `confirmed_unavailable` **preinstalled** SDK/adb/sdkmanager/emulator and `/dev/kvm` acceleration; `session_specific` official SDK/Google mirror routes failed, checked npm/PyPI candidates were wrappers/protocol libraries, not Google SDK binaries; compilation, unit/Robolectric, adb connection, emulator `not_tested`; §14/§F. |
 | 15 | Native toolchain | `confirmed` — `gcc` and `g++` compiled/ran hello, make/ld/as and libc header available; `confirmed_unavailable` preinstalled clang/cmake/ninja/pkg-config; §15. |
 | 16 | Containers / virtualization | `confirmed` KVM guest and `unshare -Ur true` succeeded; `confirmed_unavailable` Docker/Podman/etc. CLIs and local daemon sockets on checked paths; actual nested container execution `not_tested`; §16. |
 | 17 | Browser / web testing | `confirmed_unavailable` preinstalled browser and headless display on checked paths; `installable` `playwright-core` **library** only; smoke test/screenshots `not_tested` (no browser binary); §17. |
@@ -39,7 +39,7 @@ This repository has **zero** GitHub Actions workflows, runs, and artifacts at pr
 | 19 | Process / runtime | `confirmed` child/signal, background server, loopback, inotify event; `session_specific` open files 1024 / user processes 15734 / watches 65536; long-run ceiling `not_tested`; §19. |
 | 20 | Time / locale | `session_specific` — UTC date 2026-09-25, `/etc/localtime` UTC, POSIX C-type locale; clock accuracy against independent reference `not_tested`; §20. |
 | 21 | Archives / artifacts | `confirmed` tar+zip round trips, files committed and pushed (report SHA verified remotely); Actions artifact listing `confirmed` (zero); artifact download/max large size `not_tested`; §21. |
-| 22 | Limits / unknowns | `not_tested` cross-session lifespan, emulator/software fallback, JVM build, CI execution and unnecessary/forbidden GitHub mutations (merge/admin/workflow writes); `session_specific` all measured versions/resources/network results; §22. |
+| 22 | Limits / unknowns | `not_tested` cross-session lifespan, emulator/software fallback, full-JDK source compilation, Gradle/Android builds, CI execution, merge/admin/workflow writes; `session_specific` measured versions/resources and **route-specific** network results; §22/§F. |
 
 ## Evidence and exact commands
 
@@ -254,7 +254,7 @@ gh api repos/adoptium/temurin17-binaries/releases/latest --jq '{tag_name,linux:[
 curl -sS -L -r 0-1023 --max-redirs 2 --max-filesize 1048576 --connect-timeout 5 --max-time 20 -o /dev/null -w 'HTTP=%{http_code} received=%{size_download}B\n' 'https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz'
 ```
 
-`confirmed_unavailable` preinstalled JVM/JDK in checked locations: both commands missing, `JAVA_HOME` unset, no `/usr/lib/jvm`. `session_specific` download route: public release metadata identified **pinned** Temurin `jdk-17.0.20.1+1`, archive size 193,252,603 bytes; the bounded GET got a GitHub 302 then curl **35** on the release-asset CDN, 0 archive bytes. `https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse` HEAD also failed 35. No archive was downloaded/unpacked; Java hello-world compilation/execution is therefore `not_tested`, **not** `confirmed_unavailable` for every possible installation route. No large fallback JDK install was made.
+`confirmed_unavailable` preinstalled JVM/JDK in checked locations: both commands missing, `JAVA_HOME` unset, no `/usr/lib/jvm`. `session_specific` download route: public release metadata identified **pinned** Temurin `jdk-17.0.20.1+1`, archive size 193,252,603 bytes; the bounded GET got a GitHub 302 then curl **35** on the release-asset CDN, 0 archive bytes. `https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse` HEAD also failed 35. No **full JDK** archive was downloaded/unpacked through that route; this initial pass could not compile or execute Java. The follow-up in §F installed and executed a smaller Temurin **runtime** from PyPI, but did not obtain `javac`/`jdk.compiler`. Source compilation and a full JDK remain unverified; one failed archive route is not proof of their impossibility.
 
 ### 13. Gradle / Maven / dependency resolution
 
@@ -270,7 +270,7 @@ printf 'home-cache-marker\n' > "$probe/marker"; cat "$probe/marker"
 rm "$probe/marker"; rmdir "$probe" "$HOME/.gradle/caches" "$HOME/.gradle"
 ```
 
-`confirmed_unavailable` preinstalled Gradle/Maven. `session_specific`: both Gradle distribution hosts' HEADs returned curl 35; bounded pinned GitHub asset GET redirected then failed 35 at release-asset host; Maven Central jar GET, Google Maven metadata GET, Plugin Portal metadata GET all returned curl **35**, zero bytes. Consequently one small dependency was **not** resolved; a tiny scratch Gradle build, Gradle execution, and real cache writes by Gradle are `not_tested`. `confirmed` only that the conventional `$HOME/.gradle/caches/...` location accepts a marker write/read and empty directories were removed. Cache/session persistence or distribution download through untested mirrors is **unknown**, not impossible. A successful front-page HEAD elsewhere would not establish artifact downloads.
+`confirmed_unavailable` **preinstalled** Gradle/Maven. `session_specific`: both Gradle distribution hosts' HEADs returned curl 35; bounded pinned GitHub asset GET redirected then failed 35 at release-asset host; Maven Central jar GET, Google Maven metadata GET, Plugin Portal metadata GET all returned curl **35**, zero bytes. Subsequent authenticated GitHub CLI/API and alternate mirror checks are in §F. Consequently one small dependency was **not** resolved; a tiny scratch Gradle build, Gradle execution, and real cache writes by Gradle are `not_tested`. `confirmed` only that the conventional `$HOME/.gradle/caches/...` location accepts a marker write/read and empty directories were removed. Cache/session persistence or distribution download through untested mirrors is **unknown**, not impossible. A successful front-page HEAD elsewhere would not establish artifact downloads.
 
 ### 14. Android capability distinctions
 
@@ -281,7 +281,7 @@ for p in /opt/android-sdk /opt/android /usr/local/lib/android /usr/lib/android-s
 curl -sS -I -L --max-redirs 4 --connect-timeout 6 --max-time 22 -o /dev/null -w 'HTTP=%{http_code}\n' 'https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip'
 ```
 
-`confirmed_unavailable` preinstalled Android SDK tools/build-tools/platforms in checked locations, `sdkmanager`, `adb`, `emulator`, Android env variables, and **`/dev/kvm`**. `/dev/kvm` absence establishes no KVM-backed accelerated emulator in this guest; it does not establish that software emulation could never work. `session_specific`: tested official command-line-tools archive route failed curl 35; no large SDK/system-image install. The following remain separately `not_tested`: **Android dependency resolution**, **Android compilation**, **JVM unit/Robolectric tests**, **adb connection**, **emulator/managed-device run**. Failure to install tools or run an emulator is **not** evidence of inability to resolve Android dependencies or compile on a different network/runner.
+`confirmed_unavailable` preinstalled Android SDK tools/build-tools/platforms in checked locations, `sdkmanager`, `adb`, `emulator`, Android env variables, and **`/dev/kvm`**. `/dev/kvm` absence establishes no KVM-backed accelerated emulator in this guest; it does not establish that software emulation could never work. `session_specific`: tested official command-line-tools archive route failed curl 35; §F documents alternate signed apt, Google and package-registry paths. No large SDK/system-image install. The following remain separately `not_tested`: **Android dependency resolution**, **Android compilation**, **JVM unit/Robolectric tests**, **adb connection**, **emulator/managed-device run**. Failure to install tools or run an emulator is **not** evidence of inability to resolve Android dependencies or compile on a different network/runner.
 
 ### 15 & 16. Native builds, containers and virtualization
 
@@ -344,22 +344,131 @@ gh api repos/anthracite-labs/Template/actions/artifacts --jq '{total_count}'
 
 `confirmed`: tar.gz (147 bytes) and zip (202 bytes) were created, extracted, and content-checked; bounded 4 MiB disposable write (§2); this report was committed and pushed, with the remote SHA verified (§8). Actions artifacts list count 0, so **download through Arena's GitHub integration is not tested**. Maximum large artifact/file size is unmeasured. Other deliberate unknowns: cross-session storage and process survival, public preview reachability, JDK/Gradle/Android builds, browser execution and screenshots, actual CI runner access, populated workflow logs/artifacts, comments/labels/workflow writes, merges and settings mutation. These unknowns must not be promoted to confirmed failures or successes.
 
+## §F. Follow-up: alternate acquisition paths (2026-09-26, ~00:02–00:13 UTC)
+
+PR #3's [owner comment](https://github.com/anthracite-labs/Template/pull/3#issuecomment-5841284649) correctly requested more than direct-host `curl` failures before assessing JVM/Gradle/Android. This follow-up was performed in the same checkout on `arena/01a0daec-template`. All temporary files went under `/tmp/arena-audit-followup-01a0daec`; no system package install, TLS-verification bypass (`-k`, `--no_https`, etc.), unverified archive execution, workflow mutation, or emulator/system-image download. A failed host is **only** a failed route. The initial §1–§22 inventory remains a timestamped *preinstalled-at-start* snapshot; the statuses below supersede any initial uncertainty about **Java runtime** acquisition.
+
+### F1. Safe acquisition-route outcomes
+
+| Capability / route | Classification | Exact probe and result |
+|---|---|---|
+| GitHub releases via CLI | `session_specific` failed *download route* | `gh release download 'jdk-17.0.20.1+1' --repo adoptium/temurin17-binaries --pattern 'OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz' --dir "$d"` → exit 1, `Get "[signed-CDN-URL-redacted] EOF`, 0 bytes. `gh release download v8.14.3 --repo gradle/gradle-distributions --pattern gradle-8.14.3-bin.zip --dir "$d"` → the same CDN EOF, 0 bytes. CDN presigned URL/query was **not stored in the report**. |
+| GitHub REST assets | `session_specific` failed *download route* | `gh api` release metadata provided **official pinned** JDK asset `523839222` (193,252,603 bytes, SHA-256 `3808d1d15e3ec6bd5b84057fb5d84c33d8a1536a258146bcea2e603fc726e08e`) and Gradle asset `269969095` (137,393,837 bytes, SHA-256 `bd71102213493060956ec229d946beee57158dbd89d0e62b91bca0fa2c5f3531`). `curl --range 0-1023 --max-filesize 4096 -H 'Accept: application/octet-stream' https://api.github.com/repos/gradle/gradle-distributions/releases/assets/269969095` → HTTP **302**, 0 bytes, with and without configured auth; authenticated Temurin asset `.../releases/assets/523839222` also returned **302**, 0 bytes. Gradle `application/vnd.github.v3.raw` returned JSON metadata (200, 1,696 bytes), **not** the archive. `gh api -H 'Accept: application/octet-stream' .../assets/269969095` followed the redirect and failed with the same CDN EOF. Public REST access is not an in-API binary stream for these assets. |
+| Debian apt (existing signed source and HTTPS) | `session_specific` metadata failures; privileged install `not_tested` | `/etc/apt/sources.list.d/debian.sources` specifies `http://deb.debian.org/debian` and `debian-security`, `Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg` (readable). Unprivileged scratch `apt-get update` against **that existing Debian HTTP transport** with `signed-by` yielded `Connection failed [IP: … 80]`, **zero** index files. Prior scratch HTTPS attempt (§4) yielded `Could not handshake: The TLS connection was non-properly terminated`, zero files. Both apt attempts exited **0 with warnings**, so exit code is not evidence metadata refreshed; attempted `/var/cache/apt/archives/partial` cleanup was denied, no system package changed. No `--allow-unauthenticated` or privileged install. |
+| Alternative official/reputable HTTPS distribution endpoints | `session_specific` *route failures only* | `curl -sS -I --connect-timeout 4 --max-time 9 -o /dev/null -w 'HTTP=%{http_code} TLS=%{ssl_verify_result}\n' URL`: Azul (`cdn.azul.com`), BellSoft, Corretto (`corretto.aws`), Oracle/`download.java.net`, conda-forge and Anaconda, Debian/Ubuntu mirrors, Tsinghua/Tencent Gradle mirrors, Google Maven (`maven.google.com`), Google CDN redirector (`redirector.gvt1.com`), Aliyun/Huawei Maven mirrors, and `jitpack.io` all returned curl **35** before HTTP at the tested URLs. Not a universal statement about mirrors or future sessions. |
+| PyPI verified alternate Temurin **runtime** | `installable` | `jdk4py==21.0.8.2` from ActiveViam's public PyPI wheel: actual GET/install/hash and running Java are proven in F2. This wheel is a **trimmed runtime**, *not* a full JDK/compiler. |
+| npm/PyPI Gradle/Android candidates | `not_tested` toolchain execution (no binary acquired) | `npm view gradle-dist@1.0.1 dist.unpackedSize` → **5,212** bytes; `npm view gradle@1.2.4 dist.unpackedSize` → **3,625** bytes: distribution managers/wrappers, **not** the 137 MB official Gradle ZIP. `npm view android-platform-tools@3.0.2 dist.unpackedSize` → **24,399** bytes (Node wrapper, not Google platform-tools binaries); PyPI `sdkmanager==0.7.1` is a **274,541-byte Python source package** maintained by F-Droid, not Google's command-line-tools ZIP. Checked PyPI `android-sdk`, `android-platform-tools`, `android-build-tools` names: 404. Not proof no other package or source exists. |
+
+Representative **exact** follow-up route commands (the remaining hosts used the same HEAD form; errors and CDN URLs were redacted before display):
+
+```bash
+d=/tmp/arena-audit-followup-01a0daec
+# Metadata supplies the expected SHA-256; this is NOT an asset download.
+gh api repos/gradle/gradle-distributions/releases/tags/v8.14.3 --jq '{tag_name,gradle_bin:[.assets[]|select(.name=="gradle-8.14.3-bin.zip")|{name,size,digest,id}]}'
+# Public API: 302, zero bytes; authenticated API with the same bounded Range was also 302.
+curl -sS --range 0-1023 --max-filesize 4096 --connect-timeout 5 --max-time 15 -H 'Accept: application/octet-stream' -o "$d/gradle-api-unauth" -w 'HTTP=%{http_code} type=%{content_type} bytes=%{size_download}\n' 'https://api.github.com/repos/gradle/gradle-distributions/releases/assets/269969095'
+curl -sS --range 0-1023 --max-filesize 4096 --connect-timeout 5 --max-time 15 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/octet-stream' -o "$d/gradle-api-authed" -w 'HTTP=%{http_code} type=%{content_type} bytes=%{size_download}\n' 'https://api.github.com/repos/gradle/gradle-distributions/releases/assets/269969095'
+# gh follows the redirect: an EOF at the release-asset CDN, no distribution ZIP.
+out=$(timeout 35 gh release download v8.14.3 --repo gradle/gradle-distributions --pattern gradle-8.14.3-bin.zip --dir "$d" 2>&1); status=$?
+printf '%s\n' "$out" | sed -E 's#https://(objects|release-assets)\.githubusercontent\.com[^[:space:]]*#[signed-CDN-URL-redacted]#g' | head -8
+printf 'gh_release_exit=%s\n' "$status"
+# Configured Debian HTTP source with its signing key: metadata only, all intended writes in scratch.
+printf 'deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian bookworm main\n' > "$d/debian-sources.list"
+mkdir -p "$d/apt/lists/partial" "$d/apt/cache/archives/partial"
+timeout 30 apt-get update -o Dir::Etc::sourcelist="$d/debian-sources.list" -o Dir::Etc::sourceparts=- -o Dir::State::Lists="$d/apt/lists" -o Dir::Cache="$d/apt/cache" -o Dir::Cache::archives="$d/apt/cache/archives" -o APT::Get::List-Cleanup=false -o Debug::NoLocking=1 -o Acquire::Retries=0 -o Acquire::http::Timeout=8
+# Examples of independently probed alternate routes (all curl 35, HTTP 000):
+curl -sS -I --connect-timeout 4 --max-time 9 -o /dev/null -w 'HTTP=%{http_code} TLS=%{ssl_verify_result}\n' https://cdn.azul.com/zulu/bin/
+curl -sS -I --connect-timeout 4 --max-time 9 -o /dev/null -w 'HTTP=%{http_code} TLS=%{ssl_verify_result}\n' https://conda.anaconda.org/conda-forge/linux-64/repodata.json.zst
+curl -sS -I --connect-timeout 5 --max-time 12 -o /dev/null -w 'HTTP=%{http_code} TLS=%{ssl_verify_result}\n' https://mirrors.tuna.tsinghua.edu.cn/gradle/gradle-8.14.3-bin.zip
+curl -sS -I --connect-timeout 4 --max-time 9 -o /dev/null -w 'HTTP=%{http_code} TLS=%{ssl_verify_result}\n' https://redirector.gvt1.com/edgedl/android/repository/
+npm view gradle-dist@1.0.1 dist.unpackedSize --json --registry=https://registry.npmjs.org
+npm view android-platform-tools@3.0.2 dist.unpackedSize --json --registry=https://registry.npmjs.org
+```
+
+Only the **official Debian source already configured in this image** was probed over HTTP, with its Debian signing key still required; HTTPS was not downgraded for an otherwise HTTPS-only source. No unsigned apt flags, TLS opt-outs, package installation, or public service were used. These checks are bounded by practical, known routes, not a claim to enumerate every mirror on the Internet. GitHub `gh`/REST content reads and git work normally; **release asset redirects** are the distinct failing route.
+
+### F2. Installed Java runtime and bounded execution proof
+
+The PyPI metadata identified `jdk4py==21.0.8.2`, authored by ActiveViam (public `activeviam/jdk4py`, GPL-2.0); the x86_64 Linux wheel is **33,794,570 bytes** with published SHA-256 `85addfcb57c7051dad6145b9f816fc519337e9a0c705ef01edc9dc7818ee0356`. This is a **third-party repackaging** of Temurin; the wheel checksum protects the retrieved PyPI artifact, not an independently verified Adoptium upstream signature. The project's `build_java_runtime.py` uses `jlink` with selected modules, explaining the deliberately trimmed image. Exact executed acquisition commands:
+
+```bash
+d=/tmp/arena-audit-followup-01a0daec
+mkdir -p "$d/wheels"
+PIP_DISABLE_PIP_VERSION_CHECK=1 pip3 download --no-deps --only-binary=:all: --index-url https://pypi.org/simple --dest "$d/wheels" 'jdk4py==21.0.8.2'
+w="$d/wheels/jdk4py-21.0.8.2-py3-none-manylinux_2_17_x86_64.whl"
+printf '85addfcb57c7051dad6145b9f816fc519337e9a0c705ef01edc9dc7818ee0356  %s\n' "$w" | sha256sum -c -
+PIP_DISABLE_PIP_VERSION_CHECK=1 pip3 install --no-deps --no-index --find-links "$d/wheels" --target "$d/jdk4py" 'jdk4py==21.0.8.2'
+PYTHONPATH="$d/jdk4py" python3 -c 'from jdk4py import JAVA_HOME; print(JAVA_HOME)'
+java_home="$d/jdk4py/jdk4py/java-runtime"
+"$java_home/bin/java" -version
+"$java_home/bin/java" --list-modules | grep -E '^(java.compiler|jdk.compiler|jdk.jshell)@' || true
+printf 'public class Hello { public static void main(String[] args) { System.out.println("Hello from Java"); } }\n' > "$d/Hello.java"
+"$java_home/bin/java" "$d/Hello.java"  # exit 1; compiler module absent
+```
+
+Output: `sha256sum ...: OK`; installed under `/tmp/.../jdk4py` (~101 MB uncompressed). `java -version` → `openjdk version "21.0.8" 2025-07-15 LTS`, `OpenJDK Runtime Environment Temurin-21.0.8+9`, 64-bit server VM. `java.compiler@21.0.8` exists, but `jdk.compiler` **does not**; `bin/javac`, `jar`, `jlink`, `jshell` also absent. Running a scratch `Hello.java` with `"$java_home/bin/java" "$d/Hello.java"` exited 1 with `java.lang.InternalError: Module jdk.compiler not in boot Layer`. Thus calling this a usable **full JDK** or successful source compilation would be false.
+
+For a bounded **runtime** proof beyond `-version`, a Python standard-library script generated a minimal Java 8 class file in scratch (not compiled by `javac`); this command executed it:
+
+```bash
+python3 - "$d" <<'PY'
+import pathlib, struct, sys
+u2=lambda n: struct.pack('>H',n)
+u4=lambda n: struct.pack('>I',n)
+pool=[]
+def add(tag, data): pool.append(bytes([tag])+data); return len(pool)
+def utf(value): data=value.encode(); return add(1,u2(len(data))+data)
+def klass(i): return add(7,u2(i))
+def ref(tag,a,b): return add(tag,u2(a)+u2(b))
+assert utf('Hello')==1; assert klass(1)==2
+assert utf('java/lang/Object')==3; assert klass(3)==4
+assert utf('<init>')==5; assert utf('()V')==6
+assert ref(12,5,6)==7; assert ref(10,4,7)==8
+assert utf('Code')==9; assert utf('main')==10
+assert utf('([Ljava/lang/String;)V')==11
+assert utf('java/lang/System')==12; assert klass(12)==13
+assert utf('out')==14; assert utf('Ljava/io/PrintStream;')==15
+assert ref(12,14,15)==16; assert ref(9,13,16)==17
+assert utf('Hello from PyPI Java runtime')==18; assert add(8,u2(18))==19
+assert utf('java/io/PrintStream')==20; assert klass(20)==21
+assert utf('println')==22; assert utf('(Ljava/lang/String;)V')==23
+assert ref(12,22,23)==24; assert ref(10,21,24)==25
+def method(flags,name,desc,stack,locals_,code):
+    body=u2(stack)+u2(locals_)+u4(len(code))+code+u2(0)+u2(0)
+    return u2(flags)+u2(name)+u2(desc)+u2(1)+u2(9)+u4(len(body))+body
+init=method(1,5,6,1,1,bytes.fromhex('2ab70008b1'))
+main=method(9,10,11,2,1,bytes.fromhex('b200111213b60019b1'))
+raw=bytes.fromhex('cafebabe')+u2(0)+u2(52)+u2(len(pool)+1)+b''.join(pool)+u2(0x21)+u2(2)+u2(4)+u2(0)+u2(0)+u2(2)+init+main+u2(0)
+p=pathlib.Path(sys.argv[1])/'Hello.class'; p.write_bytes(raw)
+print('class_size',len(raw),'magic',raw[:4].hex(),'version',int.from_bytes(raw[6:8],'big'))
+PY
+"$java_home/bin/java" -cp "$d" Hello
+```
+
+Output: `class_size 352 magic cafebabe version 52` then **`Hello from PyPI Java runtime`**. This proves execution of user-local JVM bytecode; Python authored the class file. **Java source compilation was not demonstrated**. A complete full JDK (or compiler supplied by a separately verified route) and a Gradle distribution are required before a real Java compile / Gradle dependency-resolving scratch build can be claimed. No unverified third-party compiler JAR was run merely to make the check green.
+
+### F3. Remaining Gradle / Android verification boundary
+
+The pinned Gradle v8.14.3 distribution's **release metadata and digest** were readable (§F1), but neither GitHub CLI/API nor direct/mirror routes delivered its bytes; npm candidate packages contain wrappers, not Gradle. A Java **runtime** alone does not prove Gradle, `javac`, Maven Central access, a writable *real* Gradle cache, or a resolved dependency. A scratch Gradle build was **not run**; direct GET of the small Commons Lang jar, Google Maven metadata and Plugin Portal metadata still failed at their routes (§13). An alternate reputable artifact/mirror would need an independently checked digest and an actual Gradle run before upgrading the classification.
+
+For Android, a bounded `curl -sS -f -L --max-redirs 2 --range 0-1023 --max-filesize 1048576 --connect-timeout 5 --max-time 15 -o /dev/null 'https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip'` GET returned **curl 35 / HTTP 000 / 0 bytes**; bounded Google Maven metadata GET also returned curl 35 / 0 bytes. The tested Google CDN redirector failed before HTTP; official signed Debian metadata was not fetched; checked npm/PyPI candidates are not SDK binaries. The working Java runtime does **not** make `sdkmanager`, `adb`, build-tools/platforms, Android compilation, Robolectric or emulator tests proven. `/dev/kvm` remains absent, independently limiting **accelerated** emulation only. No SDK assets or license acceptance were fabricated. All unperformed build/dependency/device operations remain `not_tested`, not `confirmed_unavailable` generally.
+
 ## Confirmed / limited / installable / unverified at a glance
 
-- **`confirmed`:** local Git clone/fetch/status/diff/commit, push of the new **and existing** remote session branch, PR #3 creation, native compilation/execution, Python/Node/Perl, small verified GitHub API download, npm/PyPI package downloads, loopback HTTP, file and background process persistence within this session, archives, SQLite via Python, signals and inotify, selected read-only GitHub APIs.
-- **`installable`:** previously missing `pipx`, `pnpm`, Playwright-core **library**, and a native esbuild binary, installed in user scratch without sudo; not a claim all packages or browsers are installable.
-- **`confirmed_unavailable` in the narrowly tested form:** preinstalled JVM/Gradle/Android SDK/browser/container CLI and listed other missing PATH tools; `/dev/kvm` and KVM-backed Android acceleration; curl forced IPv6 to GitHub in this test. None means every alternative installation route is impossible.
+- **`confirmed`:** local Git clone/fetch/status/diff/commit, push of the new **and existing** remote session branch, PR #3 creation, native compilation/execution, Python/Node/Perl, small verified GitHub API/PyPI downloads, **Java bytecode execution from a user-local runtime**, loopback HTTP, file and background process persistence within this session, archives, SQLite via Python, signals and inotify, selected read-only GitHub APIs.
+- **`installable`:** previously missing `pipx`, `pnpm`, Playwright-core **library**, native esbuild binary, and **Temurin 21 runtime** via verified PyPI wheel, installed in scratch without sudo. Runtime != full JDK; neither `javac` nor `jdk.compiler` is supplied by that wheel.
+- **`confirmed_unavailable` in the narrowly tested form:** at initial inventory, preinstalled JVM/Gradle/Android SDK/browser/container CLIs and other missing PATH tools; `/dev/kvm` and KVM-backed Android acceleration; compiler module/binary in **this** trimmed Java image; forced IPv6 curl to GitHub in this test. None means every alternative acquisition route is impossible.
 - **`permission_restricted`:** GitHub Actions settings read (`403 Resource not accessible by integration`), authenticated-user API read (`403`). Other GitHub writes require separate evidence, not extrapolation from these endpoints.
-- **`session_specific`:** package versions, CPU/RAM/disk/inodes, DNS/reachability, TLS-handshake failures, time, limits and integration scope. HEAD success is not artifact GET success; `curl` exit 35 is not a certificate-verification error.
-- **`not_tested`:** anything requiring account/repository administration, destructive or unnecessary visible changes, a privileged OS package install, very large downloads, emulator/system image, public tunnel, nonexistent Actions logs/artifacts, different Arena sessions, and builds dependent on missing downloads.
+- **`session_specific`:** package versions, CPU/RAM/disk/inodes, DNS/reachability, **specific host/transport/redirect** failures, time, limits and integration scope. HEAD success is not artifact GET success; `curl` exit 35 is not a certificate-verification error and does **not** prove toolchain unavailability.
+- **`not_tested`:** full JDK source compilation, Gradle scratch build/real dependency, Android dependency/build/unit/adb/emulator work, account/repository admin mutations, a privileged OS package install, very large downloads, public tunnel, nonexistent Actions logs/artifacts, and different Arena sessions. If a verified route becomes available, rerun the missing bounded proofs instead of assuming they fail.
 
 ## Dispatch discrepancies and recommendation
 
 The current-session evidence supports the narrow corrections in `.agents/ARENA-DISPATCH.md` in this PR:
 
 1. `AGENTS.md` **can** be read explicitly (`cat AGENTS.md` worked); whether Arena loads it automatically is unverified. Replace the absolute “Arena does not read” claim with “do not assume automatic reading”; keep task-critical Issue context explicit.
-2. Add a **live, safety-bounded capability check**: preinstalled vs safely installable, HEAD/front page vs actual artifact GET, and check existing workflows/permission before choosing CI. The exact toolchain/network is session-specific.
+2. Add a **live, safety-bounded capability check**: preinstalled vs safely installable, HEAD/front page vs actual artifact GET, and check existing workflows/permission before choosing CI. This follow-up demonstrates why a direct `curl` TLS failure at the official JDK host must stay route-specific: a verified PyPI wheel supplied a working Java runtime, though not a compiler. The dispatch rule now explicitly asks for reputable alternate CLI/API/signed-package/verified-mirror/user-local routes without disabling TLS or verification.
 3. Qualify “prefer GitHub Actions when the sandbox lacks tools”: **this repository has zero workflows**, and Actions settings GET is 403. Use an existing accessible trusted runner when local verification cannot work; otherwise report the precise gap instead of assuming CI will solve it.
 4. Qualify final acceptance to refer to the **actual** verification surface, not an assumed Actions pipeline. Required CI remains required where present.
 
-For future repositories: put task-critical context and verification in the Issue, test current-session toolchain/network and actual artifact downloads, check whether trusted CI exists and can be accessed before routing to it, then record unknowns without weakening a security-audit sandbox contract. Do **not** turn one session's package versions or selective network access into permanent template guarantees.
+For future repositories: put task-critical context and verification in the Issue, test current-session toolchain/network and actual artifact downloads **across reasonable verified routes**, distinguish a runnable Java runtime from a full JDK/Gradle/Android build environment, check whether trusted CI exists and can be accessed before routing to it, then record unknowns without weakening TLS, package verification, or a security-audit sandbox contract. Do **not** turn one session's package versions or selective network access into permanent template guarantees.
